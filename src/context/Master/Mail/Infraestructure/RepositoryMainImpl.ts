@@ -29,7 +29,7 @@ export class RepositoryMainImpl implements RepositoryMain {
     }
   }
 
-  public async sendMail(c: Context, params: EntityMain): Promise<void> {
+  public async sendMail(c: Context, params: EntityMain, authUser: string): Promise<void> {
     const ENVIRONMENT = getEnvironment(c);
     const db = (c.env as Bindings).DB_LOG;
     const origin = c.req.header('origin') || c.req.header('host') || null;
@@ -41,8 +41,13 @@ export class RepositoryMainImpl implements RepositoryMain {
       origin,
     };
 
+    // El remitente (from) y la plantilla se determinan por el usuario autenticado (Basic), no por el body.
+    const cred = ENVIRONMENT.USERS.find((u) => u.user === authUser);
+    const from = cred?.from || ENVIRONMENT.RESEND.FROM;
+    const template = cred?.template;
+
     try {
-      await AdapterMailClient.sendMessage({ apiKey: ENVIRONMENT.RESEND.API_KEY, from: ENVIRONMENT.RESEND.FROM }, params);
+      await AdapterMailClient.sendMessage({ apiKey: ENVIRONMENT.RESEND.API_KEY, from, template }, params);
       await AdapterMailLog.save(db, { ...base, status: 'sent' });
     } catch (err) {
       await AdapterMailLog.save(db, { ...base, status: 'failed', error: (err as Error)?.message ?? 'unknown' });

@@ -21,10 +21,10 @@ export class Router {
 
   private async sendMail(c: Context): Promise<Response> {
     try {
-      await AdapterAuthorization.validateAuthBasic(c);
+      const authUser = await AdapterAuthorization.validateAuthBasic(c);
 
       const body: EntityMain = await c.req.json();
-      await this.controller.sendMail(c, body);
+      await this.controller.sendMail(c, body, authUser);
       return c.json(true, 200);
     } catch (error) {
       const err = error as IError;

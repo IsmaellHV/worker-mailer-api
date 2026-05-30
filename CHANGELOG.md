@@ -7,8 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Multiusuario: `AUTH_BASIC` con 3 usuarios (`ihv`, `sci`, `sisci`).
+- `USERS` mapea cada usuario autenticado a su propio remitente (`from`) y plantilla.
+- 3 plantillas por caso (`ihv` azul, `sci` morado, `sisci` rojo) sobre una base común; reemplazan la plantilla genérica única.
+- `request_log` guarda `ip` (`CF-Connecting-IP`) y `auth_user` (usuario Basic, sin contraseña).
+
 ### Changed
 
+- El `from` y la plantilla se eligen por el **usuario autenticado** (Basic), no por el body.
 - Renamed worker to `worker-mailer-api` (`wrangler.jsonc` + `package.json`)
 - Implemented real email sending via Resend (the previous `sendMail` was a stub)
 - Email now sends both `html` and a plain-text version (better deliverability)

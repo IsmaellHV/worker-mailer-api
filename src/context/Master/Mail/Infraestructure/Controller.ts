@@ -10,7 +10,7 @@ export class Controller {
     this.repo = new RepositoryMainImpl();
   }
 
-  public async sendMail(c: Context, params: EntityMain): Promise<void> {
-    await new UseCaseSendMail(this.repo).exec(c, params);
+  public async sendMail(c: Context, params: EntityMain, authUser: string): Promise<void> {
+    await new UseCaseSendMail(this.repo).exec(c, params, authUser);
   }
 }

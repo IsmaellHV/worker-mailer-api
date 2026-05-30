@@ -1,10 +1,16 @@
-interface TemplateGenericoParams {
+export interface TemplateParams {
   body: string;
   year: number;
 }
 
-// Plantilla neutral responsive. Workers no tiene fs/path, por eso va incrustada como string.
-export const templateGenerico = ({ body, year }: TemplateGenericoParams): string => `<!DOCTYPE html>
+export interface BrandOptions {
+  brand: string; // texto/nombre que aparece en el encabezado y footer
+  accentColor: string; // color de la barra superior y acentos
+}
+
+// Plantilla base responsive. Workers no tiene fs/path, por eso va incrustada como string.
+// Las plantillas por caso (ihv/sci/sisci) solo cambian marca y color.
+export const baseTemplate = ({ body, year }: TemplateParams, brand: BrandOptions): string => `<!DOCTYPE html>
 <html lang="es" xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta charset="utf-8" />
@@ -19,10 +25,15 @@ export const templateGenerico = ({ body, year }: TemplateGenericoParams): string
           <td align="center" style="padding:24px 12px;">
             <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:600px;background-color:#ffffff;border-radius:10px;overflow:hidden;">
               <tr>
-                <td style="height:6px;background-color:#2563eb;"></td>
+                <td style="height:6px;background-color:${brand.accentColor};"></td>
               </tr>
               <tr>
-                <td style="padding:32px 32px 8px 32px;color:#1f2937;font-size:14px;line-height:1.6;">
+                <td style="padding:24px 32px 4px 32px;color:${brand.accentColor};font-size:18px;font-weight:bold;letter-spacing:0.5px;">
+                  ${brand.brand}
+                </td>
+              </tr>
+              <tr>
+                <td style="padding:8px 32px 8px 32px;color:#1f2937;font-size:14px;line-height:1.6;">
                   ${body}
                 </td>
               </tr>
@@ -35,7 +46,7 @@ export const templateGenerico = ({ body, year }: TemplateGenericoParams): string
               </tr>
               <tr>
                 <td align="center" style="padding:16px;background-color:#111827;color:#ffffff;font-size:12px;">
-                  <span>&copy; ${year} &mdash; Todos los derechos reservados</span>
+                  <span>&copy; ${year} ${brand.brand} &mdash; Todos los derechos reservados</span>
                 </td>
               </tr>
             </table>

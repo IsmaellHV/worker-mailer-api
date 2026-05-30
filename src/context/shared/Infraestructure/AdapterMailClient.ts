@@ -1,10 +1,11 @@
 import { IError } from '../../../types/IError';
-import { templateGenerico } from './templates/generico';
+import { getTemplate } from './templates';
 import { AdapterMailResend, IMailResendSend } from './AdapterMailResend';
 
 export interface IMailClientConfig {
   apiKey: string;
   from: string;
+  template?: string | null; // clave de plantilla: 'ihv' | 'sci' | 'sisci'
 }
 
 export interface IMailClientMessage {
@@ -25,7 +26,7 @@ export class AdapterMailClient {
     }
 
     const innerBody = [params.saludo, params.cuerpo].filter((x) => !!x).join('<br /><br />');
-    const html = templateGenerico({ body: innerBody, year: new Date().getFullYear() });
+    const html = getTemplate(config.template)({ body: innerBody, year: new Date().getFullYear() });
     const text = this.htmlToText([params.saludo, params.cuerpo].filter((x) => !!x).join('\n\n'));
 
     const from = params.name && !config.from.includes('<') ? `${params.name} <${config.from}>` : config.from;

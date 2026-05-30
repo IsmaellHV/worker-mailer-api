@@ -5,18 +5,18 @@ import { Context } from 'hono';
 export class UseCaseSendMail {
   constructor(private repository: RepositoryMain) {}
 
-  public async exec(c: Context, params: EntityMain): Promise<void> {
+  public async exec(c: Context, params: EntityMain, authUser: string): Promise<void> {
     try {
       await this.repository.validateSendMail(params);
-      await this._exec(c, params);
+      await this._exec(c, params, authUser);
     } catch (error) {
       throw error;
     }
   }
 
-  async _exec(c: Context, params: EntityMain): Promise<void> {
+  async _exec(c: Context, params: EntityMain, authUser: string): Promise<void> {
     try {
-      await this.repository.sendMail(c, params);
+      await this.repository.sendMail(c, params, authUser);
     } catch (error) {
       throw error;
     }
