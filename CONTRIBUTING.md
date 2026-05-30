@@ -61,8 +61,8 @@ Enhancement suggestions are tracked as GitHub issues. When creating an enhanceme
 2. **Clone your fork** locally:
 
    ```bash
-   git clone https://github.com/ismaellhv/hono-cf.git
-   cd hono-cf-01
+   git clone https://github.com/IsmaellHV/hono-cf.git worker-mailer-api
+   cd worker-mailer-api
    ```
 
 3. **Install dependencies**:
@@ -71,11 +71,11 @@ Enhancement suggestions are tracked as GitHub issues. When creating an enhanceme
    npm install
    ```
 
-4. **Set up environment variables**:
+4. **Set up environment variables** (Workers uses `.dev.vars`):
 
    ```bash
-   cp .env.example .env
-   # Edit .env with your configuration
+   cp .dev.vars.example .dev.vars
+   # Edit .dev.vars with your configuration
    ```
 
 5. **Start development server**:
@@ -108,7 +108,7 @@ Example:
 ```
 Add email validation to user registration
 
-- Implement email format validation using AJV
+- Implement email format validation
 - Add comprehensive tests for email validation
 - Update error messages for better user experience
 
@@ -224,7 +224,7 @@ Contributors will be recognized in the project's README.md file and release note
 
 ### Required Tools
 
-- Node.js 18 or higher
+- Node.js 20 or higher
 - npm or yarn
 - Git
 - Code editor (VS Code recommended)
@@ -239,11 +239,13 @@ Contributors will be recognized in the project's README.md file and release note
 
 ### Environment Variables
 
-Create a `.env` file with the following variables:
+Create a `.dev.vars` file with the following variables:
 
-```env
+```ini
 PREFIX=v1
-# Add other required environment variables
+DOMAINS=["localhost"]
+RESEND_API_TOKEN=re_xxxxxxxx
+RESEND_FROM=NOTIFICACIONES <no-reply@yourdomain.com>
 ```
 
 ## Release Process

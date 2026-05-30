@@ -1,67 +1,48 @@
-import AJV, { Schema } from 'ajv';
-import addFormats from 'ajv-formats';
 import { Context } from 'hono';
 import { IError } from '../../../../types/IError';
-import { AdapterGenerico } from '../../../shared/Infraestructure/AdapterGenerico';
+import { AdapterMailClient } from '../../../shared/Infraestructure/AdapterMailClient';
 import { EntityMain } from '../Domain/EntityMain';
 import { RepositoryMain } from '../Domain/RepositoryMain';
-const ajv = new AJV({ removeAdditional: true, logger: false });
-addFormats(ajv);
+import { getEnvironment } from '../../../../env';
 
 export class RepositoryMainImpl implements RepositoryMain {
   public async validateSendMail(params: EntityMain): Promise<void> {
-    const schema: Schema = {
-      type: 'object',
-      properties: {
-        type: { type: 'string', nullable: true },
-        name: { type: 'string', nullable: true },
-        to: { type: ['string', 'array'], items: { type: 'string' }, nullable: true },
-        cc: { type: ['string', 'array'], items: { type: 'string' }, nullable: true },
-        bcc: { type: ['string', 'array'], items: { type: 'string' }, nullable: true },
-        priority: { type: 'string', nullable: true },
-        subject: { type: 'string', nullable: true },
-        cuerpo: { type: 'string', nullable: true },
-        saludo: { type: 'string', nullable: true },
-        excel: {
-          type: 'array',
-          items: {
-            type: 'object',
-            properties: {
-              data: { type: 'object' },
-              filename: { type: 'string' },
-            },
-            required: ['data', 'filename'],
-            additionalProperties: false,
-          },
-          nullable: true,
-        },
-        attachment: {
-          type: 'array',
-          items: {
-            type: 'object',
-            properties: {
-              base64: { type: 'string' },
-              filename: { type: 'string' },
-              cid: { type: 'string' },
-            },
-            required: ['base64', 'filename'],
-            additionalProperties: false,
-          },
-          nullable: true,
-        },
-      },
-      required: [],
-      additionalProperties: false,
-    };
+    if (!this.isNonEmptyString(params.subject)) {
+      throw new IError('parámetros de ingreso no presenta la propiedad subject', 0);
+    }
+    if (!this.isNonEmptyString(params.cuerpo)) {
+      throw new IError('parámetros de ingreso no presenta la propiedad cuerpo', 0);
+    }
 
-    const validate = ajv.compile(schema);
-    const valid = validate(params);
-    if (!valid) {
-      throw new IError(AdapterGenerico.decodeErrorAJV(validate.errors[0]), 0);
+    const recipients = [params.to, params.cc, params.bcc];
+    if (!recipients.some((r) => this.toArray(r).length > 0)) {
+      throw new IError('parámetros de ingreso debe incluir al menos un destinatario en to, cc o bcc', 0);
+    }
+
+    for (const [field, value] of [['to', params.to], ['cc', params.cc], ['bcc', params.bcc]] as const) {
+      for (const email of this.toArray(value)) {
+        if (!this.isEmail(email)) {
+          throw new IError(`parámetro de ingreso: ${field} contiene un correo no válido (${email})`, 0);
+        }
+      }
     }
   }
 
   public async sendMail(c: Context, params: EntityMain): Promise<void> {
-    console.log('correo enviado....');
+    const ENVIRONMENT = getEnvironment(c);
+    await AdapterMailClient.sendMessage({ apiKey: ENVIRONMENT.RESEND.API_KEY, from: ENVIRONMENT.RESEND.FROM }, params);
+  }
+
+  private isNonEmptyString(value: unknown): value is string {
+    return typeof value === 'string' && value.trim().length > 0;
+  }
+
+  private isEmail(value: string): boolean {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+  }
+
+  private toArray(value: string[] | string | null | undefined): string[] {
+    if (!value) return [];
+    return Array.isArray(value) ? value : [value];
   }
 }

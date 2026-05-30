@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "hono-cf-01",
+  "name": "worker-mailer-api",
   "main": "src/index.ts",
   "compatibility_date": "2025-03-06",
   "observability": {

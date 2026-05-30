@@ -1,6 +1,0 @@
-{
-    "validationErrors": {
-        "duplicateRecord": "A user with the same identification document number already exists",
-        "emailAlreadyRegistered": "The email is already registered"
-    }
-}

@@ -1,5 +1,5 @@
 {
-  "name": "hono-cf-01",
+  "name": "worker-mailer-api",
   "version": "1.0.0",
   "description": "A robust and scalable email service API built with Hono and designed to run on Cloudflare Workers",
   "main": "src/index.ts",
@@ -36,17 +36,13 @@
   },
   "dependencies": {
     "@cloudflare/workers-types": "^4.20250303.0",
-    "ajv": "^8.17.1",
-    "ajv-formats": "^3.0.1",
-    "axios": "^1.8.2",
     "hono": "^4.7.4",
-    "path": "^0.12.7",
     "resend": "^4.1.2",
     "ua-parser-js": "^2.0.2"
   },
   "devDependencies": {
     "@types/node": "^22.13.10",
-    "wrangler": "^3.114.0"
+    "wrangler": "^4.95.0"
   },
   "engines": {
     "node": ">=18.0.0"

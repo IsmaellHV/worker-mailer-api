@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Renamed worker to `worker-mailer-api` (`wrangler.jsonc` + `package.json`)
+- Implemented real email sending via Resend (the previous `sendMail` was a stub)
+- Email now sends both `html` and a plain-text version (better deliverability)
+- HTML template inlined as a TS module (Workers has no filesystem) instead of a `.hbs` file
+- Replaced AJV runtime validation with manual validation (AJV uses `eval`/codegen, disallowed on Workers); validation is now stricter (`subject`, `cuerpo`, and at least one recipient required)
+- Updated README and CONTRIBUTING to match the current code
+
+### Removed
+
+- `ajv` and `ajv-formats` dependencies
+- `axios` and `path` dependencies (unused)
+- Dead files: `AdapterGenerico`, `AdapterRecaptcha`, `_Bootstrapping`, `language/` (i18n), `ILanguage`/`TypeLanguage`, leftover Express types (`IRequest`/`IUser`/`IFile`), scratch `index2.ts`/`index3.ts`
+- `.github/` CI/CD workflow and `audit-ci.json` (broken; project deploys via `wrangler deploy`)
+
 ### Added
 
 - Initial public release preparation

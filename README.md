@@ -1,31 +1,31 @@
-# Hono Mail Service API
+# worker-mailer-api
 
-A robust and scalable email service API built with [Hono](https://hono.dev/) and designed to run on Cloudflare Workers. This service provides a clean architecture for handling email operations with support for attachments, Excel file generation, and comprehensive validation.
+A small, fast email service API built with [Hono](https://hono.dev/) and designed to run on Cloudflare Workers. It exposes a single endpoint to send transactional emails through [Resend](https://resend.com/), wrapping the content in a neutral responsive HTML template and a plain-text fallback.
 
 ## 🚀 Features
 
-- **Modern Architecture**: Built with Hono framework for high performance
-- **Email Service**: Send emails with HTML/text content
-- **File Attachments**: Support for file attachments with base64 encoding
-- **Excel Generation**: Dynamic Excel file creation and attachment
-- **Input Validation**: Comprehensive validation using AJV (Another JSON Schema Validator)
-- **Multilingual Support**: Built-in internationalization with English and Spanish
-- **Cloudflare Workers**: Optimized for edge computing
-- **TypeScript**: Full type safety throughout the application
+- **Hono on Cloudflare Workers** — Web-Standard, edge-native, tiny cold start
+- **Email via Resend** — sends both `html` and `text` versions
+- **Neutral HTML template** — inlined as a TS module (Workers has no filesystem)
+- **Attachments** — base64-encoded file attachments
+- **CORS allowlist** — origin validation via the `DOMAINS` variable (403 if not allowed)
+- **Auth detection** — Basic / JWT header parsing on protected routes
+- **Workers-safe validation** — manual input validation (no `eval`/codegen)
+- **TypeScript** — full type safety
 
 ## 📋 Prerequisites
 
-- Node.js 18+
-- npm or yarn
-- Cloudflare Workers account (for deployment)
+- Node.js 20+
+- A Cloudflare account (for deployment)
+- A [Resend](https://resend.com/) account with a **verified domain**
 
 ## 🛠️ Installation
 
 1. **Clone the repository:**
 
    ```bash
-   git clone https://github.com/IsmaellHV/hono-cf.git
-   cd hono-cf-01
+   git clone https://github.com/IsmaellHV/hono-cf.git worker-mailer-api
+   cd worker-mailer-api
    ```
 
 2. **Install dependencies:**
@@ -34,191 +34,163 @@ A robust and scalable email service API built with [Hono](https://hono.dev/) and
    npm install
    ```
 
-3. **Set up environment variables:**
-   Create a `.env` file in the root directory:
-   ```env
+3. **Set up local variables** — Workers uses `.dev.vars` (not `.env`):
+
+   ```bash
+   cp .dev.vars.example .dev.vars
+   ```
+
+   Then edit `.dev.vars`:
+
+   ```ini
    PREFIX=v1
-   # Add your other environment variables here
+   DOMAINS=["ismaelhv.com","ihurtadov.com","localhost"]
+   RESEND_API_TOKEN=re_xxxxxxxxxxxxxxxxxxxxxxxx
+   RESEND_FROM=NOTIFICACIONES <no-reply@yourdomain.com>
    ```
 
 ## 🚀 Usage
 
 ### Development
 
-Start the development server:
-
 ```bash
 npm run dev
 ```
 
-The API will be available at `http://localhost:8787`
+The API runs at `http://localhost:8787`.
 
 ### Production Deployment
-
-Deploy to Cloudflare Workers:
 
 ```bash
 npm run deploy
 ```
 
-## 📚 API Documentation
+Then upload the variables as secrets (the `.dev.vars` file is local only):
+
+```bash
+npx wrangler secret put PREFIX
+npx wrangler secret put DOMAINS
+npx wrangler secret put RESEND_API_TOKEN
+npx wrangler secret put RESEND_FROM
+```
+
+> ⚠️ In production, `DOMAINS` must include the real origin(s) that call this API, or CORS will reject them with `403`.
+
+## 📚 API
 
 ### Send Email
 
-**POST** `/api/{prefix}/mail/send`
+**POST** `/api/{PREFIX}/master/mail/sendMail`
 
-#### Request Body:
+With `PREFIX=v1`, the path is `/api/v1/master/mail/sendMail`.
+
+Requires a request `Origin` (or `Host`) header included in `DOMAINS`.
+
+#### Request body
 
 ```json
 {
-  "type": "html",
-  "name": "Sender Name",
+  "subject": "Email subject",
+  "cuerpo": "Email body (HTML allowed)",
+  "saludo": "Optional greeting",
+  "name": "Optional sender display name",
   "to": ["recipient@example.com"],
   "cc": ["cc@example.com"],
   "bcc": ["bcc@example.com"],
-  "priority": "high",
-  "subject": "Email Subject",
-  "cuerpo": "Email body content",
-  "saludo": "Greeting message",
-  "excel": [
-    {
-      "data": {
-        "sheet1": [
-          ["Header1", "Header2"],
-          ["Data1", "Data2"]
-        ]
-      },
-      "filename": "report.xlsx"
-    }
-  ],
   "attachment": [
-    {
-      "base64": "base64_encoded_content",
-      "filename": "document.pdf",
-      "cid": "unique_id"
-    }
+    { "filename": "document.pdf", "base64": "base64_encoded_content" }
   ]
 }
 ```
 
-#### Response:
+- `subject` and `cuerpo` are **required**.
+- At least one of `to` / `cc` / `bcc` is **required** (string or array of emails).
+- `saludo` and `cuerpo` are joined to build the email body; `name` (if set) becomes the sender display name.
 
-```json
-{
-  "success": true,
-  "message": "Email sent successfully"
-}
+#### Responses
+
+```jsonc
+// 200 OK
+true
+
+// 406 Not Acceptable (validation or Resend error)
+{ "error": true, "errorDescription": "parámetros de ingreso no presenta la propiedad cuerpo" }
+
+// 403 Forbidden (origin not in DOMAINS)
+{ "error": true, "errorDescription": "Origen no permitido", "errorCode": 0, "message": "Origen no permitido" }
+```
+
+#### Example
+
+```bash
+curl -X POST https://worker-mailer-api.<account>.workers.dev/api/v1/master/mail/sendMail \
+  -H "Content-Type: application/json" \
+  -H "Origin: https://ismaelhv.com" \
+  -d '{"subject":"Hello","saludo":"Hi:","cuerpo":"This is a <b>test</b>.","name":"System","to":["you@example.com"]}'
 ```
 
 ## 🏗️ Architecture
 
-The project follows a clean architecture pattern:
+Clean / hexagonal (DDD) structure:
 
 ```
 src/
-├── context/
-│   └── Master/
-│       └── Mail/
-│           ├── Application/          # Use cases
-│           ├── Domain/              # Business logic
-│           └── Infrastructure/      # External dependencies
-├── rest/                           # REST API layer
-├── shared/                         # Shared utilities
-├── types/                          # TypeScript definitions
-└── language/                       # Internationalization
+├── index.ts                         # Worker entry (fetch handler)
+├── env/                             # Bindings + getEnvironment()
+├── rest/                            # Hono server, router, manager interface
+├── types/                           # IError
+└── context/
+    ├── shared/Infraestructure/
+    │   ├── AdapterAuthorization.ts  # Basic/JWT auth
+    │   ├── AdapterMailClient.ts     # builds HTML/text + orchestrates send
+    │   ├── AdapterMailResend.ts     # Resend SDK wrapper
+    │   └── templates/generico.ts    # inlined HTML template
+    └── Master/Mail/
+        ├── Application/             # UseCaseSendMail
+        ├── Domain/                  # EntityMain, RepositoryMain, ...
+        └── Infraestructure/         # Router, Controller, RepositoryMainImpl
 ```
 
-### Key Components:
-
-- **Domain Layer**: Contains business entities and repository interfaces
-- **Application Layer**: Implements use cases and business logic
-- **Infrastructure Layer**: Handles external dependencies and data access
-- **REST Layer**: Manages HTTP requests and responses
+- **Domain** — entities and repository interfaces
+- **Application** — use cases
+- **Infrastructure** — Resend, validation, HTTP wiring
 
 ## 🔧 Configuration
 
-### Wrangler Configuration
+`wrangler.jsonc`:
 
-The project uses `wrangler.jsonc` for Cloudflare Workers configuration:
-
-```json
+```jsonc
 {
-  "name": "hono-cf-01",
+  "name": "worker-mailer-api",
   "main": "src/index.ts",
   "compatibility_date": "2025-03-06"
 }
 ```
 
-### TypeScript Configuration
-
-The project includes a comprehensive TypeScript configuration in `tsconfig.json` with strict type checking enabled.
-
-## 🧪 Testing
-
-Run tests (when available):
-
-```bash
-npm test
-```
-
 ## 📦 Dependencies
 
-### Main Dependencies:
+- **hono** — web framework for Cloudflare Workers
+- **resend** — email delivery
+- **ua-parser-js** — user-agent parsing
 
-- **hono**: Web framework for Cloudflare Workers
-- **ajv**: JSON Schema validator
-- **ajv-formats**: Additional formats for AJV
-- **axios**: HTTP client
-- **resend**: Email service provider
-- **ua-parser-js**: User agent parser
+Dev:
 
-### Development Dependencies:
-
-- **@types/node**: Node.js type definitions
-- **wrangler**: Cloudflare Workers CLI
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on our code of conduct and the process for submitting pull requests.
+- **@types/node** — Node type definitions
+- **wrangler** — Cloudflare Workers CLI
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+MIT — see [LICENSE](LICENSE).
 
 ## 🔒 Security
 
-If you discover any security-related issues, please check [SECURITY.md](SECURITY.md) for information on how to report them responsibly.
+To report security issues, see [SECURITY.md](SECURITY.md).
 
 ## 👨‍💻 Author
 
 **Ismael Hurtado**
 
 - Email: [ismaelhv@outlook.com](mailto:ismaelhv@outlook.com)
-- LinkedIn: [https://www.linkedin.com/in/ihurtadov/](https://www.linkedin.com/in/ihurtadov/)
-- GitHub: [https://github.com/IsmaellHV](https://github.com/IsmaellHV)
-- Portfolio: [https://ismaelhv.com](https://ismaelhv.com)
-
-## 🙏 Acknowledgments
-
-- [Hono](https://hono.dev/) - The web framework that powers this API
-- [Cloudflare Workers](https://workers.cloudflare.com/) - The runtime environment
-- [AJV](https://ajv.js.org/) - JSON Schema validator
-
-## 📈 Roadmap
-
-- [ ] Add comprehensive unit tests
-- [ ] Implement email templates
-- [ ] Add rate limiting
-- [ ] Implement authentication middleware
-- [ ] Add monitoring and logging
-- [ ] Create OpenAPI documentation
-
----
-
-⭐ If you found this project helpful, please give it a star on GitHub!
+- LinkedIn: [ihurtadov](https://www.linkedin.com/in/ihurtadov/)
+- GitHub: [IsmaellHV](https://github.com/IsmaellHV)
+- Portfolio: [ismaelhv.com](https://ismaelhv.com)
