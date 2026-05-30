@@ -3,6 +3,7 @@ import { Controller } from './Controller';
 import { EntityMain } from '../Domain/EntityMain';
 import { IError } from '../../../../types/IError';
 import { Hono, Context } from 'hono';
+import { ContentfulStatusCode } from 'hono/utils/http-status';
 import { AdapterAuthorization } from '../../../shared/Infraestructure/AdapterAuthorization';
 
 export class Router {
@@ -15,47 +16,22 @@ export class Router {
   }
 
   public async exec(): Promise<void> {
-    // this.router.get(`/${AdapterConfigure.SCHEMA}/${AdapterConfigure.ENTITY}/test/:id`, this.test.bind(this));
-    this.router.get(`/${AdapterConfigure.SCHEMA}/${AdapterConfigure.ENTITY}/test`, this.test.bind(this));
     this.router.post(`/${AdapterConfigure.SCHEMA}/${AdapterConfigure.ENTITY}/sendMail`, this.sendMail.bind(this));
   }
 
   private async sendMail(c: Context): Promise<Response> {
-    const req = c.req;
-    const res = c.res;
-
-    const body: EntityMain = await req.json();
-
     try {
+      await AdapterAuthorization.validateAuthBasic(c);
+
+      const body: EntityMain = await c.req.json();
       await this.controller.sendMail(c, body);
       return c.json(true, 200);
     } catch (error) {
       const err = error as IError;
-      return c.json({ error: true, errorDescription: err.message }, 406);
+      return c.json(
+        { error: true, errorDescription: err.messageClient || err.message, errorCode: err.errorCode ?? 0, message: err.message },
+        (err.statusHttp ?? 406) as ContentfulStatusCode,
+      );
     }
-  }
-
-  private async test(c: Context): Promise<Response> {
-    if (c.get('authBasic')) {
-      if (!(await AdapterAuthorization.validateAuthBasic(c))) return;
-    } else if (c.get('authJWT')) {
-      if (!(await AdapterAuthorization.validateAuthBasic(c))) return;
-    } else {
-      return await AdapterAuthorization.noValidate(c);
-    }
-
-    // const { results } = await c.env.DB_LOG.prepare(
-    //   "SELECT * FROM Customers WHERE CompanyName = ?",
-    // )
-    //   .bind("Bs Beverages")
-    //   .all();
-
-    // const id = c.req.param('id');
-    // const body = await c.req.parseBody(); //formaData
-    const body = await c.req.json(); //raw JSON
-
-    // console.log('ID', id);
-    // console.log('BODY', body);
-    return c.json(body, 200);
   }
 }

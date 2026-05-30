@@ -184,6 +184,8 @@ MIT — see [LICENSE](LICENSE).
 
 ## 🔒 Security
 
+Secrets live in `.dev.vars` (local, git-ignored) and as `wrangler secret` (production) — never in code or committed files.
+
 To report security issues, see [SECURITY.md](SECURITY.md).
 
 ## 👨‍💻 Author

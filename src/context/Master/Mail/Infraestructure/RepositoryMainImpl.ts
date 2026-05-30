@@ -1,9 +1,10 @@
 import { Context } from 'hono';
 import { IError } from '../../../../types/IError';
 import { AdapterMailClient } from '../../../shared/Infraestructure/AdapterMailClient';
+import { AdapterMailLog } from '../../../shared/Infraestructure/AdapterMailLog';
 import { EntityMain } from '../Domain/EntityMain';
 import { RepositoryMain } from '../Domain/RepositoryMain';
-import { getEnvironment } from '../../../../env';
+import { Bindings, getEnvironment } from '../../../../env';
 
 export class RepositoryMainImpl implements RepositoryMain {
   public async validateSendMail(params: EntityMain): Promise<void> {
@@ -30,7 +31,28 @@ export class RepositoryMainImpl implements RepositoryMain {
 
   public async sendMail(c: Context, params: EntityMain): Promise<void> {
     const ENVIRONMENT = getEnvironment(c);
-    await AdapterMailClient.sendMessage({ apiKey: ENVIRONMENT.RESEND.API_KEY, from: ENVIRONMENT.RESEND.FROM }, params);
+    const db = (c.env as Bindings).DB_LOG;
+    const origin = c.req.header('origin') || c.req.header('host') || null;
+    const base = {
+      to: this.join(params.to),
+      cc: this.join(params.cc),
+      bcc: this.join(params.bcc),
+      subject: params.subject,
+      origin,
+    };
+
+    try {
+      await AdapterMailClient.sendMessage({ apiKey: ENVIRONMENT.RESEND.API_KEY, from: ENVIRONMENT.RESEND.FROM }, params);
+      await AdapterMailLog.save(db, { ...base, status: 'sent' });
+    } catch (err) {
+      await AdapterMailLog.save(db, { ...base, status: 'failed', error: (err as Error)?.message ?? 'unknown' });
+      throw err;
+    }
+  }
+
+  private join(value: string[] | string | null | undefined): string | null {
+    const arr = this.toArray(value);
+    return arr.length ? arr.join(', ') : null;
   }
 
   private isNonEmptyString(value: unknown): value is string {

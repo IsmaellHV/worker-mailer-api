@@ -3,16 +3,22 @@
   "name": "worker-mailer-api",
   "main": "src/index.ts",
   "compatibility_date": "2025-03-06",
+  "routes": [
+    {
+      "pattern": "worker-mailer.ihurtadov.com",
+      "custom_domain": true
+    }
+  ],
   "observability": {
     "logs": {
       "enabled": true
     }
-  }
-  // "d1_databases": [
-  //   {
-  //     "binding": "DB_LOG",
-  //     "database_name": "log",
-  //     "database_id": "8f1871fc-b782-4750-9cbb-830844dd62b0"
-  //   }
-  // ]
+  },
+  "d1_databases": [
+    {
+      "binding": "DB_LOG",
+      "database_name": "worker-mailer-db",
+      "database_id": "4f713b2c-b98c-4d3f-afee-49a1872a0782"
+    }
+  ]
 }
