@@ -9,7 +9,6 @@ export interface IMailLogRow {
 }
 
 export class AdapterMailLog {
-  // Guardado best-effort: nunca debe romper el envío si la base falla o no está.
   public static async save(db: D1Database | undefined, row: IMailLogRow): Promise<void> {
     if (!db) return;
     try {

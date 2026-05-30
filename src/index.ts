@@ -1,6 +1,7 @@
 import { Bindings } from './env';
 import { RouterRest } from './rest/Router';
 import { ServerREST } from './rest/Server';
+import { AdapterRequestLog } from './context/shared/Infraestructure/AdapterRequestLog';
 
 let appPromise: Promise<any> | null = null;
 
@@ -19,6 +20,47 @@ export default {
   async fetch(request: Request, env: { [key: string]: Bindings }, ctx: ExecutionContext) {
     if (!appPromise) appPromise = run(env);
     const app = await appPromise;
-    return app.fetch(request, env, ctx);
+
+    const db = (env as unknown as Bindings).DB_LOG;
+
+    // Clonar el body ANTES de que app.fetch lo consuma (el body solo se lee una vez).
+    let body: string | null = null;
+    if (db && (request.method === 'POST' || request.method === 'PUT' || request.method === 'PATCH')) {
+      try {
+        const raw = await request.clone().text();
+        body = raw ? raw.slice(0, 10000) : null; // truncado a 10KB
+      } catch {
+        body = null;
+      }
+    }
+
+    const start = Date.now();
+    const res: Response = await app.fetch(request, env, ctx);
+
+    if (db) {
+      let error: string | null = null;
+      if (res.status >= 400) {
+        try {
+          error = await res.clone().text();
+        } catch {
+          error = null;
+        }
+      }
+      const url = new URL(request.url);
+      ctx.waitUntil(
+        AdapterRequestLog.save(db, {
+          method: request.method,
+          path: url.pathname,
+          status: res.status,
+          origin: request.headers.get('origin') || request.headers.get('host'),
+          userAgent: request.headers.get('user-agent'),
+          body,
+          error,
+          durationMs: Date.now() - start,
+        }),
+      );
+    }
+
+    return res;
   },
 };
