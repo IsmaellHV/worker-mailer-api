@@ -23,12 +23,11 @@ export default {
 
     const db = (env as unknown as Bindings).DB_LOG;
 
-    // Clonar el body ANTES de que app.fetch lo consuma (el body solo se lee una vez).
     let body: string | null = null;
     if (db && (request.method === 'POST' || request.method === 'PUT' || request.method === 'PATCH')) {
       try {
         const raw = await request.clone().text();
-        body = raw ? raw.slice(0, 10000) : null; // truncado a 10KB
+        body = raw ? raw.slice(0, 10000) : null;
       } catch {
         body = null;
       }
@@ -47,12 +46,28 @@ export default {
         }
       }
       const url = new URL(request.url);
+
+      let authUser: string | null = null;
+      const authHeader = request.headers.get('authorization');
+      if (authHeader) {
+        const parts = authHeader.split(' ');
+        if (parts.length === 2 && parts[0].trim().toUpperCase() === 'BASIC') {
+          try {
+            const dec = atob(parts[1].trim());
+            const i = dec.indexOf(':');
+            authUser = i >= 0 ? dec.slice(0, i) : null;
+          } catch {
+            authUser = null;
+          }
+        }
+      }
       ctx.waitUntil(
         AdapterRequestLog.save(db, {
           method: request.method,
           path: url.pathname,
           status: res.status,
           ip: request.headers.get('cf-connecting-ip'),
+          authUser,
           origin: request.headers.get('origin') || request.headers.get('host'),
           userAgent: request.headers.get('user-agent'),
           body,
