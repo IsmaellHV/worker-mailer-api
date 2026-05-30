@@ -52,6 +52,7 @@ export default {
           method: request.method,
           path: url.pathname,
           status: res.status,
+          ip: request.headers.get('cf-connecting-ip'),
           origin: request.headers.get('origin') || request.headers.get('host'),
           userAgent: request.headers.get('user-agent'),
           body,

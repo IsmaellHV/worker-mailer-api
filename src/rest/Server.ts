@@ -9,7 +9,7 @@ import { logger } from 'hono/logger';
 export class ServerREST {
   public app: Hono<{ Bindings: Bindings }>;
 
-  constructor() {}
+  constructor() { }
 
   public async exec() {
     this.app = await this.createServer();
@@ -30,6 +30,13 @@ export class ServerREST {
       const allowedOrigin = (origin: string) => {
         return ENVIRONMENT.DOMAINS.filter((x) => origin.includes(x)).length ? true : false;
       };
+
+      if (ENVIRONMENT.ALLOWED_IPS.length) {
+        const clientIp = c.req.header('cf-connecting-ip') || '';
+        if (!ENVIRONMENT.ALLOWED_IPS.includes(clientIp)) {
+          return c.json({ error: true, errorDescription: 'IP no permitida', errorCode: 0, message: 'IP no permitida' }, 403);
+        }
+      }
 
       // Obtiene el origen de la petición
       const requestOrigin = c.req.raw.headers.get('origin') || c.req.header('host') || '';
