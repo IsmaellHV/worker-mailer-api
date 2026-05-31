@@ -5,6 +5,7 @@ import { IError } from '../../../../types/IError';
 import { Hono, Context } from 'hono';
 import { ContentfulStatusCode } from 'hono/utils/http-status';
 import { AdapterAuthorization } from '../../../shared/Infraestructure/AdapterAuthorization';
+import { AdapterRateLimit } from '../../../shared/Infraestructure/AdapterRateLimit';
 
 export class Router {
   private controller: Controller;
@@ -22,6 +23,7 @@ export class Router {
   private async sendMail(c: Context): Promise<Response> {
     try {
       const authUser = await AdapterAuthorization.validateAuthBasic(c);
+      await AdapterRateLimit.check((c.env as any).MAIL_LIMITER, `mail:${authUser}`);
 
       const body: EntityMain = await c.req.json();
       await this.controller.sendMail(c, body, authUser);
